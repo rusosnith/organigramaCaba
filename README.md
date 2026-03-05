@@ -63,8 +63,7 @@ Los datasets originales presentaban múltiples inconsistencias y problemas que h
 - **Lista de nombres en formato HTML**: La fuente de géneros por nombre venía en una tabla HTML con entradas inválidas (filas que no eran nombres, textos demasiado largos, entradas en mayúsculas completas), requiriendo parsing y filtrado.
 - **Géneros ambiguos**: Algunos nombres en la lista tenían géneros asignados de manera inconsistente o ambigua, por lo que se optó por no asignar género en casos dudosos para evitar errores.
 - **Falta de estandarización en nombres y textos**: Nombres de funcionarios, reparticiones y descripciones contenían inconsistencias en formato, acentos y caracteres especiales, necesitando limpieza y normalización.
-- **Estructura de datos heterogénea**: Los archivos de diferentes años tenían esquemas ligeramente diferentes, con columnas agregadas o removidas, complicando la unificación directa.
-- **Datos sucios en general**: Presencia de filas duplicadas, campos vacíos, formatos inconsistentes y posibles errores de tipeo en los datos originales.
+- **Columnas redundantes fusionadas**: Campos como `ministerionombre`, `descrep` y `descsigla` que duplicaban información del ministerio fueron unificados en una sola columna `ministerio`.
 
 Estos problemas hicieron indispensable el desarrollo de un pipeline robusto con detección automática, normalización, inferencia de datos y limpieza exhaustiva para obtener un dataset unificado y usable.
 
