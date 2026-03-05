@@ -1,0 +1,142 @@
+import pandas as pd
+import re
+import unicodedata
+from pathlib import Path
+
+# utilities
+
+def detect_separator(path, encoding):
+    try:
+        with open(path, 'r', encoding=encoding) as f:
+            line = f.readline()
+        return ';' if line.count(';') > line.count(',') else ','
+    except:
+        return ','
+
+def normalize_name(name: str) -> str:
+    if pd.isna(name):
+        return ''
+    n = name.lower()
+    n = ''.join(c for c in unicodedata.normalize('NFD', n) if unicodedata.category(c) != 'Mn')
+    n = re.sub(r'[^a-z\s]', '', n)
+    n = re.sub(r'\s+', ' ', n).strip()
+    return n
+
+# 1. unify CSVs
+print('=== Unifying year CSVs ===')
+root = Path(__file__).parent
+files = sorted(root.glob('autoridades*.csv'))
+dfs = []
+for f in files:
+    print(' processing', f.name)
+    year_match = re.search(r'(\d{4})', f.name)
+    if not year_match:
+        continue
+    year = int(year_match.group(1))
+    df = None
+    for enc in ['utf-8','latin-1','iso-8859-1','cp1252']:
+        sep = detect_separator(f, enc)
+        try:
+            df = pd.read_csv(f, encoding=enc, sep=sep, low_memory=False, on_bad_lines='skip')
+            print('   read with', enc, 'sep', sep)
+            break
+        except Exception:
+            continue
+    if df is not None:
+        df['año'] = year
+        dfs.append(df)
+    else:
+        print('  failed to read', f.name)
+
+if not dfs:
+    raise RuntimeError('no input data')
+df_all = pd.concat(dfs, ignore_index=True)
+out1 = root / 'funcionarios_unificados.csv'
+df_all.to_csv(out1, index=False)
+print('unified file saved', out1)
+
+# 2. normalise and dedupe columns
+print('=== Normalising columns ===')
+def normal_col(col):
+    return normalize_name(col).replace(' ', '_')
+
+# compute mapping for duplicated columns
+colmap = {}
+norms = {}
+for col in df_all.columns:
+    n = normal_col(col)
+    colmap[col] = n
+    norms.setdefault(n, []).append(col)
+
+# merge duplicates
+for n, cols in norms.items():
+    if len(cols) > 1:
+        base = cols[0]
+        for other in cols[1:]:
+            df_all[base] = df_all[base].fillna(df_all[other])
+        df_all.drop(columns=cols[1:], inplace=True)
+
+# rename to normalized
+rename = {col: normal_col(col) for col in df_all.columns}
+df_all.rename(columns=rename, inplace=True)
+
+# merge repartition fields
+if 'reparticion' in df_all.columns and 'descripcion_reparticion' in df_all.columns:
+    df_all['reparticion'] = df_all['reparticion'].fillna(df_all['descripcion_reparticion'])
+    df_all.drop(columns=['descripcion_reparticion'], inplace=True)
+
+# 3 infer gender by CUIT
+print('=== Inferring gender from cuil ===')
+def infer_from_cuit(c):
+    try:
+        s = str(c).replace('-', '').strip()
+        if len(s) >= 2:
+            p = s[:2]
+            if p == '20': return 'M'
+            if p == '27': return 'F'
+    except: pass
+    return None
+
+if 'genero' not in df_all.columns:
+    df_all['genero'] = pd.NA
+mask = df_all['genero'].isna()
+inf = df_all.loc[mask, 'cuil'].apply(infer_from_cuit)
+df_all.loc[mask, 'genero'] = df_all.loc[mask, 'genero'].fillna(inf)
+
+# save intermediate
+out2 = root / 'funcionarios_intermedio.csv'
+df_all.to_csv(out2, index=False)
+
+# 4 parse name-gender table
+print('=== Parsing name list ===')
+names_html = root / 'nombres.html'
+name_gender = {}
+if names_html.exists():
+    import html
+    text = names_html.read_text(encoding='iso-8859-1', errors='ignore')
+    rows = re.findall(r'<tr[^>]*>(.*?)</tr>', text, flags=re.DOTALL|re.IGNORECASE)
+    for tr in rows:
+        tds = re.findall(r'<td[^>]*>(.*?)</td>', tr, flags=re.DOTALL|re.IGNORECASE)
+        if len(tds) >= 2:
+            n = re.sub(r'<[^>]+>', '', tds[0]).strip()
+            s = re.sub(r'<[^>]+>', '', tds[1]).strip().upper()
+            if n and s in ('M','F'):
+                norm = normalize_name(n).split(' ')[0]
+                name_gender.setdefault(norm, set()).add(s)
+else:
+    print('no names.html file, skipping')
+
+# 5 assign missing genders from name list
+print('=== Assigning gender from name list ===')
+assigned = 0
+for idx, row in df_all[df_all['genero'].isna()].iterrows():
+    first = normalize_name(str(row.get('nombre',''))).split(' ')[0]
+    if first in name_gender and len(name_gender[first]) == 1:
+        df_all.at[idx,'genero'] = next(iter(name_gender[first]))
+        assigned += 1
+print('assigned from names', assigned)
+
+# final save
+out_final = root / 'funcionarios_unificados_limpioOK.csv'
+df_all.to_csv(out_final, index=False)
+print('final file created', out_final)
