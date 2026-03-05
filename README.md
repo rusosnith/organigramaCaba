@@ -13,7 +13,8 @@ organigramaCaba/
 │  │  ├─ nombres.html      # tabla de nombres con sexo
 │  │  └─ nombres.csv       # exportación simplificada (nombre,sexo)
 │  └─ processed/        # Resultado final
-│     └─ funcionarios_unificados_limpioOK.csv
+│     ├─ funcionarios_unificados_limpioOK.csv
+│     └─ columnas_ejemplos.csv  # Mapeo de columnas con ejemplos
 ├─ scripts/             # Script principal para ejecutar el pipeline completo
 │  └─ run_all.py        # pipeline completo
 └─ README.md
