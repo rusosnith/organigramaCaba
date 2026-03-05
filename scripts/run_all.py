@@ -57,32 +57,25 @@ out1 = processed_dir / 'funcionarios_unificados.csv'
 df_all.to_csv(out1, index=False)
 print('unified file saved', out1)
 
-# 2. normalise and dedupe columns
+# 2. normalise columns (no automatic dedupe to avoid merging columns with data in both)
 print('=== Normalising columns ===')
 def normal_col(col):
     return normalize_name(col).replace(' ', '_')
 
-# compute mapping for duplicated columns
-colmap = {}
-norms = {}
+seen = set()
+rename = {}
 for col in df_all.columns:
     n = normal_col(col)
-    colmap[col] = n
-    norms.setdefault(n, []).append(col)
-
-# merge duplicates
-for n, cols in norms.items():
-    if len(cols) > 1:
-        base = cols[0]
-        for other in cols[1:]:
-            df_all[base] = df_all[base].fillna(df_all[other])
-        df_all.drop(columns=cols[1:], inplace=True)
-
-# rename to normalized
-rename = {col: normal_col(col) for col in df_all.columns}
+    if n in seen:
+        i = 1
+        while f"{n}_{i}" in seen:
+            i += 1
+        n = f"{n}_{i}"
+    seen.add(n)
+    rename[col] = n
 df_all.rename(columns=rename, inplace=True)
 
-# merge repartition fields
+# manual merges for known duplicates
 if 'reparticion' in df_all.columns and 'descripcion_reparticion' in df_all.columns:
     df_all['reparticion'] = df_all['reparticion'].fillna(df_all['descripcion_reparticion'])
     df_all.drop(columns=['descripcion_reparticion'], inplace=True)
@@ -138,9 +131,9 @@ for idx, row in df_all[df_all['genero'].isna()].iterrows():
         assigned += 1
 print('assigned from names', assigned)
 
-# merge redundant columns
-print('=== Merging redundant columns ===')
-if 'ministerionombre' in df_all.columns:
+# manual merges for known duplicates (only if one is empty)
+print('=== Merging known duplicate columns ===')
+if 'ministerionombre' in df_all.columns and 'ministerio' in df_all.columns:
     df_all['ministerio'] = df_all['ministerio'].fillna(df_all['ministerionombre'])
     df_all.drop(columns=['ministerionombre'], inplace=True)
 if 'descrep' in df_all.columns and 'ministerio' in df_all.columns:
@@ -149,12 +142,6 @@ if 'descrep' in df_all.columns and 'ministerio' in df_all.columns:
 if 'descsigla' in df_all.columns and 'ministerio' in df_all.columns:
     df_all['ministerio'] = df_all['ministerio'].fillna(df_all['descsigla'])
     df_all.drop(columns=['descsigla'], inplace=True)
-if 'dependencianombre' in df_all.columns:
-    # assume it's the name, keep as is or rename if needed
-    pass  # for now, leave
-if 'reparticionnombre' in df_all.columns:
-    # similar
-    pass
 
 # final save
 out_final = processed_dir / 'funcionarios_unificados_limpioOK.csv'

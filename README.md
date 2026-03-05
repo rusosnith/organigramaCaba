@@ -17,16 +17,7 @@ organigramaCaba/
 │     ├─ funcionarios_intermedio.csv
 │     ├─ funcionarios_unificados_limpioOK.csv
 │     └─ nombres_limpios.csv  (# opciona)
-├─ scripts/             # Código Python para cada paso
-│  ├─ unificar_datos.py
-│  ├─ unificar_datos_correctamente.py
-│  ├─ unificar_columnas.py
-│  ├─ encontrar_columnas_duplicadas.py
-│  ├─ completar_genero.py
-│  ├─ convertir_nombres.py
-│  ├─ limpiar_nombres.py
-│  ├─ merge_columns.py
-│  ├─ asignar_genero_nombres.py
+├─ scripts/             # Script principal para ejecutar el pipeline completo
 │  └─ run_all.py        # pipeline completo
 └─ README.md
 ```
@@ -40,8 +31,7 @@ organigramaCaba/
    python scripts/run_all.py
    ```
    Esto genera el archivo final `data/processed/funcionarios_unificados_limpioOK.csv`.
-3. Si necesitas rehacer un paso individual, usa el script correspondiente en
-   `scripts/`.
+3. Si necesitas rehacer un paso individual, modifica el script `run_all.py`.
 
 ## Notas
 
