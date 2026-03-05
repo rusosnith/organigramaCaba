@@ -52,10 +52,6 @@ for f in files:
 if not dfs:
     raise RuntimeError('no input data')
 df_all = pd.concat(dfs, ignore_index=True)
-processed_dir = root / 'data' / 'processed'
-out1 = processed_dir / 'funcionarios_unificados.csv'
-df_all.to_csv(out1, index=False)
-print('unified file saved', out1)
 
 # 2. normalise columns (no automatic dedupe to avoid merging columns with data in both)
 print('=== Normalising columns ===')
@@ -98,10 +94,6 @@ mask = df_all['genero'].isna()
 inf = df_all.loc[mask, 'cuil'].apply(infer_from_cuit)
 df_all.loc[mask, 'genero'] = df_all.loc[mask, 'genero'].fillna(inf)
 
-# save intermediate
-out2 = processed_dir / 'funcionarios_intermedio.csv'
-df_all.to_csv(out2, index=False)
-
 # 4 parse name-gender table
 print('=== Parsing name list ===')
 names_html = data_raw / 'nombres.html'
@@ -143,6 +135,7 @@ if 'descsigla' in df_all.columns and 'ministerio' in df_all.columns:
     df_all['ministerio'] = df_all['ministerio'].fillna(df_all['descsigla'])
     df_all.drop(columns=['descsigla'], inplace=True)
 
+processed_dir = root / 'data' / 'processed'
 # final save
 out_final = processed_dir / 'funcionarios_unificados_limpioOK.csv'
 df_all.to_csv(out_final, index=False)

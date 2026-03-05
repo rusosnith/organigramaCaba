@@ -12,11 +12,8 @@ organigramaCaba/
 │  │  ├─ autoridades*.csv  # CSV por año
 │  │  ├─ nombres.html      # tabla de nombres con sexo
 │  │  └─ nombres.csv       # exportación simplificada (nombre,sexo)
-│  └─ processed/        # Resultados intermedios y finales
-│     ├─ funcionarios_unificados.csv
-│     ├─ funcionarios_intermedio.csv
-│     ├─ funcionarios_unificados_limpioOK.csv
-│     └─ nombres_limpios.csv  (# opciona)
+│  └─ processed/        # Resultado final
+│     └─ funcionarios_unificados_limpioOK.csv
 ├─ scripts/             # Script principal para ejecutar el pipeline completo
 │  └─ run_all.py        # pipeline completo
 └─ README.md
