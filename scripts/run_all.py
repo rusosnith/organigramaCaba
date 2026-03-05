@@ -24,8 +24,9 @@ def normalize_name(name: str) -> str:
 
 # 1. unify CSVs
 print('=== Unifying year CSVs ===')
-root = Path(__file__).parent
-files = sorted(root.glob('autoridades*.csv'))
+root = Path(__file__).parent.parent  # project root
+data_raw = root / 'data' / 'raw'
+files = sorted(data_raw.glob('autoridades*.csv'))
 dfs = []
 for f in files:
     print(' processing', f.name)
@@ -51,7 +52,8 @@ for f in files:
 if not dfs:
     raise RuntimeError('no input data')
 df_all = pd.concat(dfs, ignore_index=True)
-out1 = root / 'funcionarios_unificados.csv'
+processed_dir = root / 'data' / 'processed'
+out1 = processed_dir / 'funcionarios_unificados.csv'
 df_all.to_csv(out1, index=False)
 print('unified file saved', out1)
 
@@ -104,12 +106,12 @@ inf = df_all.loc[mask, 'cuil'].apply(infer_from_cuit)
 df_all.loc[mask, 'genero'] = df_all.loc[mask, 'genero'].fillna(inf)
 
 # save intermediate
-out2 = root / 'funcionarios_intermedio.csv'
+out2 = processed_dir / 'funcionarios_intermedio.csv'
 df_all.to_csv(out2, index=False)
 
 # 4 parse name-gender table
 print('=== Parsing name list ===')
-names_html = root / 'nombres.html'
+names_html = data_raw / 'nombres.html'
 name_gender = {}
 if names_html.exists():
     import html
@@ -136,7 +138,25 @@ for idx, row in df_all[df_all['genero'].isna()].iterrows():
         assigned += 1
 print('assigned from names', assigned)
 
+# merge redundant columns
+print('=== Merging redundant columns ===')
+if 'ministerionombre' in df_all.columns:
+    df_all['ministerio'] = df_all['ministerio'].fillna(df_all['ministerionombre'])
+    df_all.drop(columns=['ministerionombre'], inplace=True)
+if 'descrep' in df_all.columns and 'ministerio' in df_all.columns:
+    df_all['ministerio'] = df_all['ministerio'].fillna(df_all['descrep'])
+    df_all.drop(columns=['descrep'], inplace=True)
+if 'descsigla' in df_all.columns and 'ministerio' in df_all.columns:
+    df_all['ministerio'] = df_all['ministerio'].fillna(df_all['descsigla'])
+    df_all.drop(columns=['descsigla'], inplace=True)
+if 'dependencianombre' in df_all.columns:
+    # assume it's the name, keep as is or rename if needed
+    pass  # for now, leave
+if 'reparticionnombre' in df_all.columns:
+    # similar
+    pass
+
 # final save
-out_final = root / 'funcionarios_unificados_limpioOK.csv'
+out_final = processed_dir / 'funcionarios_unificados_limpioOK.csv'
 df_all.to_csv(out_final, index=False)
 print('final file created', out_final)
